@@ -1,0 +1,22 @@
+# macOS
+.DS_Store
+
+# Build artifacts
+build/
+cmake-build-*/
+*.o
+*.obj
+*.a
+*.so
+*.dylib
+*.exe
+
+# CMake / tooling
+compile_commands.json
+.cache/
+CMakeUserPresets.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
