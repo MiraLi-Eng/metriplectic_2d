@@ -52,6 +52,9 @@ struct ThermoConstants {
 
     // Gravitational acceleration along -y vertical column (m / s^2)
     static constexpr double kGravity       = 9.80665;
+
+    // Stefan-Boltzmann constant (W / (m^2 K^4)) — surface longwave radiative exchange
+    static constexpr double kStefanBoltzmann = 5.670374419e-8;
 };
 
 // ============================================================================

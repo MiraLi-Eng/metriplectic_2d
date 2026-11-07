@@ -157,6 +157,14 @@ public:
             next[idx(StateVar::RHO_V)]   += dt_weight * k_rhs[idx(StateVar::RHO_V)];
             next[idx(StateVar::RHO_C)]   += dt_weight * k_rhs[idx(StateVar::RHO_C)];
             next[idx(StateVar::RHO_R)]   += dt_weight * k_rhs[idx(StateVar::RHO_R)];
+            if (next[idx(StateVar::RHO_C)] < 0.0) {
+                next[idx(StateVar::RHO_V)] += next[idx(StateVar::RHO_C)];
+                next[idx(StateVar::RHO_C)]  = 0.0;
+            }
+            if (next[idx(StateVar::RHO_R)] < 0.0) {
+                next[idx(StateVar::RHO_V)] += next[idx(StateVar::RHO_R)];
+                next[idx(StateVar::RHO_R)]  = 0.0;
+            }
             next[idx(StateVar::MOM_UX)]  += dt_weight * k_rhs[idx(StateVar::MOM_UX)];
             next[idx(StateVar::MOM_UY)]  += dt_weight * k_rhs[idx(StateVar::MOM_UY)];
             next[idx(StateVar::EPS_TOT)] += dt_weight * k_rhs[idx(StateVar::EPS_TOT)];

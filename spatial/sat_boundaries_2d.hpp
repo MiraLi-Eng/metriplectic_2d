@@ -8,6 +8,7 @@
 #include "metriplectic_2d/spatial/sbp_operators_2d.hpp"
 #include "metriplectic_2d/thermo/moist_eos.hpp"
 #include "metriplectic_2d/thermo/pade_tables.hpp"
+#include "metriplectic_2d/thermo/surface_fluxes_2d.hpp"
 
 namespace metriplectic_2d::spatial {
 
@@ -48,6 +49,10 @@ struct SurfaceSATConfig2D {
     double surface_temp_k             = 290.0; // Prescribed surface skin temperature T_s (K)
     double sensible_conductance       = 0.0;   // Thermal Onsager conductance alpha_H (W * K / m^2)
     double evaporation_mobility       = 0.0;   // Planck-potential evaporation mobility M_evap
+    const double* surface_temp_by_column = nullptr; // Optional per-column T_s (size nx);
+                                                     // nullptr -> scalar surface_temp_k path
+    const double* sensible_conductance_by_column = nullptr; // Optional per-column alpha_H (size nx)
+    const double* evaporation_mobility_by_column = nullptr; // Optional per-column M_evap (size nx)
 };
 
 struct SATBoundaryOperators2D {
@@ -116,37 +121,37 @@ struct SATBoundaryOperators2D {
 
             // 2. Onsager Surface Sensible & Planck-Potential Latent Heat Exchange (OQ-002)
             if (config.enable_surface_heat_exchange) {
-                const double temp_s = config.surface_temp_k;
-                const double thermal_affinity = (1.0 / temp_0) - (1.0 / temp_s);
+                // Optional per-column heated-ground skin temperature and surface conductances (size nx).
+                // nullptr selects the scalar prescribed surface_temp_k / conductance path (frozen tests).
+                const double temp_s = (config.surface_temp_by_column != nullptr)
+                    ? config.surface_temp_by_column[ix]
+                    : config.surface_temp_k;
+                const double cond_s = (config.sensible_conductance_by_column != nullptr)
+                    ? config.sensible_conductance_by_column[ix]
+                    : config.sensible_conductance;
+                const double evap_s = (config.evaporation_mobility_by_column != nullptr)
+                    ? config.evaporation_mobility_by_column[ix]
+                    : config.evaporation_mobility;
 
-                // Sensible heat flux Q_H = alpha_H * (1/T_0 - 1/T_s)
-                // Entropy production sigma_H = Q_H * (1/T_0 - 1/T_s) >= 0 unconditionally
-                const double q_sensible_w_m2 = config.sensible_conductance * thermal_affinity;
-                const double sigma_thermal   = q_sensible_w_m2 * thermal_affinity;
-
-                // One-sided Planck-potential surface evaporation:
-                // Affinity A_evap = (mu_{v,sat}(T_s)/T_s - mu_{v,0}/T_0)
-                // Wait: in entropy variables, w_{rho_v, 0} = (half_v2 - phi_0 - mu_{v,0}) / T_0.
-                // At the surface, chemical potential affinity driving vapor influx is
-                // d(-mu_v / T) = (-mu_{v,0}/T_0) - (-mu_{v,sat}(T_s)/T_s) = mu_{v,sat}(T_s)/T_s - mu_{v,0}/T_0.
-                // Since mu_{v,sat}(T_s) = psi_l(T_s), this is strictly >= 0 when surface is warmer/moister.
-                const double mu_v_sat_s = PadeThermodynamicTables::psi_liquid_pade(temp_s);
-                const double evap_affinity = (diag0.mu_v / temp_0) < (mu_v_sat_s / temp_s)
-                    ? ((mu_v_sat_s / temp_s) - (diag0.mu_v / temp_0))
-                    : 0.0;
-                const double evap_mass_flux = config.evaporation_mobility * evap_affinity; // >= 0
-                const double h_vap_s = PadeThermodynamicTables::internal_energy_vapor(temp_s)
-                    + ThermoConstants::kGasConstVapor * temp_s + phi_grav_0;
-                const double evap_energy_flux = evap_mass_flux * h_vap_s;
-
-                rhs0[idx(StateVar::RHO_V)]   += inv_py0 * evap_mass_flux;
-                rhs0[idx(StateVar::EPS_TOT)] += inv_py0 * (q_sensible_w_m2 + evap_energy_flux);
-
-                ledger.net_water_mass_flux_kg_s += geom.dx * evap_mass_flux;
-                ledger.net_total_energy_flux_w  += geom.dx * (q_sensible_w_m2 + evap_energy_flux);
-                ledger.boundary_entropy_prod_w_k += geom.dx * (
-                    sigma_thermal + evap_mass_flux * evap_affinity
+                // Shared Onsager surface flux kernel: single source of truth with the
+                // ground ODE. Longwave is disabled on the air side (behavior-preserving:
+                // SAT sensible/latent exchange matches the pre-refactor path exactly).
+                const thermo::SurfaceFluxResult2D flux = thermo::compute_surface_fluxes_2d(
+                    temp_0,
+                    diag0.mu_v,
+                    temp_s,
+                    cond_s,
+                    evap_s,
+                    0.0,   // longwave_emissivity (unused: enable_longwave = false)
+                    false  // enable_longwave
                 );
+
+                rhs0[idx(StateVar::RHO_V)]   += inv_py0 * flux.latent_mass_flux_kg_m2_s;
+                rhs0[idx(StateVar::EPS_TOT)] += inv_py0 * (flux.sensible_w_m2 + flux.latent_energy_w_m2);
+
+                ledger.net_water_mass_flux_kg_s  += geom.dx * flux.latent_mass_flux_kg_m2_s;
+                ledger.net_total_energy_flux_w   += geom.dx * (flux.sensible_w_m2 + flux.latent_energy_w_m2);
+                ledger.boundary_entropy_prod_w_k += geom.dx * flux.entropy_prod_w_m2_k;
             }
         }
     }
