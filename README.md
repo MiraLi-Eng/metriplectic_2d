@@ -2,12 +2,11 @@
 
 [![Standard: C++20](https://img.shields.io/badge/C%2B%2B-20-blue.svg)](https://en.wikipedia.org/wiki/C%2B%2B20)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Safety: JPL Power of 10](https://img.shields.io/badge/Safety-NASA%2FJPL%20Rule%20Compliant-red.svg)](https://en.wikipedia.org/wiki/The_Power_of_10:_Rules_for_Developing_Safety-Critical_Code)
 [![Tests: Passing](https://img.shields.io/badge/Tests-100%25%20Passing-brightgreen.svg)]()
 
 A header-only C++20 scientific computing kernel for 2D metriplectic fluid dynamics and moist-atmospheric vertical-slice weather simulation.
 
-`metriplectic_2d` couples non-equilibrium moist thermodynamics, high-order Summation-by-Parts (SBP) spatial operators, and Horizontally Explicit, Vertically Implicit (HEVI-ARK) time integration within a thermodynamically consistent metriplectic bracket architecture. The implementation follows NASA/JPL Power of 10 safety-critical rules (zero heap allocations post-initialization, bounded loops, no exceptions, no RTTI, and zero-warning pedantic compilation).
+`metriplectic_2d` couples non-equilibrium moist thermodynamics, high-order Summation-by-Parts (SBP) spatial operators, and Horizontally Explicit, Vertically Implicit (HEVI-ARK) time integration within a thermodynamically consistent metriplectic bracket architecture.
 
 ---
 
@@ -38,12 +37,6 @@ These conditions guarantee unconditional discrete compliance with the fundamenta
 
 ## Key Capabilities & Features
 
-* **Strict Safety-Critical Design (NASA/JPL Power of 10):**
-  * Zero dynamic heap churn post-initialization (`core/arena.hpp`).
-  * Statically bounded loops with compile-time limits and precondition assertions.
-  * `-fno-exceptions -fno-rtti` compatible; all errors fail-closed through typed result codes.
-  * Compiled with `-Wall -Wextra -Wpedantic -Werror -ffp-contract=off`.
-
 * **Thermodynamics & Non-Equilibrium Moist Physics:**
   * Multi-component moist equation of state (`thermo/moist_eos.hpp`).
   * High-order rational Padé approximants (`thermo/pade_tables.hpp`) for vapor saturation pressure $e_{\text{sat}}(T)$, chemical potentials $\psi_l(T)$, and latent heat.
@@ -64,8 +57,10 @@ These conditions guarantee unconditional discrete compliance with the fundamenta
   * Multi-surface albedo and heat capacity models (land, water bodies, mountain ridge snow).
   * Per-column heated ground ODE coupled conservation-consistently to the atmospheric column.
 
-* **Telemetry & Machine Learning:**
-  * Lock-free ring buffer telemetry tap (`telemetry/gnn_ring_buffer_2d.hpp`) for exporting state trajectories to Graph Neural Networks and learned subgrid models.
+* **Engineering & Safety Standards:**
+  * Zero dynamic heap churn post-initialization (`core/arena.hpp`).
+  * Strict lifetime hygiene; `-fno-exceptions` and `-fno-rtti` compatible.
+  * Full safety-critical coding standards and practices documented in [docs/SAFETY_STANDARDS.md](docs/SAFETY_STANDARDS.md).
 
 ---
 
@@ -97,8 +92,10 @@ include/metriplectic_2d/
 ├── cases/
 │   ├── weather_case_2d.hpp     # Standard vertical-slice benchmark initializations
 │   └── solar_ground_forcing_2d.hpp # Diurnal shortwave solar and ground ODE forcing
-└── telemetry/
-    └── gnn_ring_buffer_2d.hpp  # Zero-allocation GNN telemetry and inference tap
+├── telemetry/
+│   └── gnn_ring_buffer_2d.hpp  # Zero-allocation ring buffer state telemetry tap
+└── docs/
+    └── SAFETY_STANDARDS.md     # Code safety and deterministic execution guidelines
 ```
 
 ---
@@ -201,6 +198,13 @@ ctest --output-on-failure
 * **Discrete SBP property:** Skew-symmetry of $Q$ and exact boundary projection via $B = \text{diag}(-1, 0, \dots, 0, 1)$.
 * **Entropy monotonicity:** Onsager dissipation satisfies $\sigma_{\text{gen}} \ge 0$ unconditionally across all phase transitions and turbulent diffusive regimes.
 * **Padé approximation accuracy:** Inversion accuracy within machine precision across temperatures from $200\,\text{K}$ to $340\,\text{K}$.
+
+---
+
+## Roadmap & Planned Work
+
+- [ ] **Boundary Interaction & Wave Reflection ("Fishtank" Effect):** Mitigate unphysical acoustic and gravity wave reflection and artificial boundary confinement at domain borders (absorbing sponge layers / buffer zones and non-reflecting open radiation SAT boundary conditions).
+- [ ] **Atmospheric Radiative Transfer:** Model multi-layer atmospheric absorption of solar radiation and Stefan-Boltzmann thermal longwave transmission/cooling between the ground and atmospheric layers (including nocturnal heat transfer and greenhouse re-radiation).
 
 ---
 
