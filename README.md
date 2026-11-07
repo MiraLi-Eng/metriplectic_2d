@@ -1,7 +1,7 @@
 # metriplectic_2d
 
 [![Standard: C++20](https://img.shields.io/badge/C%2B%2B-20-blue.svg)](https://en.wikipedia.org/wiki/C%2B%2B20)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: GPLv3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Tests: Passing](https://img.shields.io/badge/Tests-100%25%20Passing-brightgreen.svg)]()
 
 A header-only C++20 scientific computing kernel for 2D metriplectic fluid dynamics and moist-atmospheric vertical-slice weather simulation.
@@ -210,4 +210,4 @@ ctest --output-on-failure
 
 ## License
 
-This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+This project is licensed under the GNU General Public License v3.0 (GPLv3) — see the [LICENSE](LICENSE) file for details.
